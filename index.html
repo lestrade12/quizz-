@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>VQuiz</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <div class="name">VQuiz</div>
+        <div class="tagline">Учишь слова — проверяешь себя</div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Слов</div>
+        <div class="stat-value" id="statTotal">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Серия</div>
+        <div class="stat-value" id="statStreak">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Очки</div>
+        <div class="stat-value" id="statScore">0</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="play" role="tab">🎮 Играть</button>
+      <button class="tab" data-tab="add" role="tab">➕ Добавить</button>
+      <button class="tab" data-tab="list" role="tab">📚 База</button>
+    </nav>
+
+    <!-- PLAY -->
+    <section class="panel active" id="tab-play" role="tabpanel">
+      <div class="card">
+        <div class="card-head">
+          <div class="pill" id="modePill">Режим: Случайный</div>
+          <div class="controls">
+            <button class="btn ghost" id="btnResetScore" title="Сбросить очки/серию">Сброс</button>
+            <button class="btn" id="btnNext">Следующий</button>
+          </div>
+        </div>
+
+        <div class="progress">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div class="quiz">
+          <div class="question">
+            <div class="q-label">Слово</div>
+            <div class="q-word" id="qWord">Добавь слова во вкладке “Добавить”</div>
+          </div>
+
+          <div class="answers" id="answers"></div>
+
+          <div class="feedback" id="feedback"></div>
+        </div>
+      </div>
+
+      <div class="hint">
+        💡 Совет: добавляй новые слова каждый день — и играй 5–10 минут.
+      </div>
+    </section>
+
+    <!-- ADD -->
+    <section class="panel" id="tab-add" role="tabpanel">
+      <div class="card">
+        <div class="card-head">
+          <div class="pill">Добавление вопроса</div>
+          <div class="controls">
+            <button class="btn ghost" id="btnFillDemo">Демо</button>
+            <button class="btn" id="btnAdd">Сохранить</button>
+          </div>
+        </div>
+
+        <div class="form">
+          <label class="field">
+            <span>Слово</span>
+            <input id="word" placeholder="Например: debt" maxlength="60" />
+          </label>
+
+          <div class="grid3">
+            <label class="field">
+              <span>Вариант 1</span>
+              <input id="option1" placeholder="например: долг" maxlength="80" />
+            </label>
+            <label class="field">
+              <span>Вариант 2</span>
+              <input id="option2" placeholder="например: депозит" maxlength="80" />
+            </label>
+            <label class="field">
+              <span>Вариант 3</span>
+              <input id="option3" placeholder="например: прибыль" maxlength="80" />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Правильный вариант</span>
+            <select id="correct">
+              <option value="0">Вариант 1</option>
+              <option value="1">Вариант 2</option>
+              <option value="2">Вариант 3</option>
+            </select>
+          </label>
+
+          <div class="row">
+            <label class="check">
+              <input type="checkbox" id="shuffleOptions" checked />
+              <span>Перемешивать варианты в игре</span>
+            </label>
+
+            <label class="check">
+              <input type="checkbox" id="autoNext" checked />
+              <span>Авто “Следующий” через 1.2с</span>
+            </label>
+          </div>
+
+          <div class="small" id="addMsg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LIST -->
+    <section class="panel" id="tab-list" role="tabpanel">
+      <div class="card">
+        <div class="card-head">
+          <div class="pill">Твоя база слов</div>
+          <div class="controls">
+            <button class="btn ghost" id="btnExport">Экспорт</button>
+            <label class="btn ghost file">
+              Импорт
+              <input id="importFile" type="file" accept="application/json" />
+            </label>
+            <button class="btn danger" id="btnClearAll">Очистить</button>
+          </div>
+        </div>
+
+        <div class="list-top">
+          <div class="search">
+            🔎 <input id="listSearch" placeholder="Поиск по слову или вариантам…" />
+          </div>
+          <div class="small" id="listInfo"></div>
+        </div>
+
+        <div class="list" id="list"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toasts -->
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <!-- Tiny confetti canvas -->
+  <canvas id="confetti" class="confetti" width="1" height="1" aria-hidden="true"></canvas>
+
+  <script src="script.js"></script>
+</body>
+</html>
