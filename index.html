@@ -1,168 +1,181 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>VQuiz</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VQuiz — Create & Share</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="bg-glow"></div>
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
 
   <header class="topbar">
     <div class="brand">
-      <div class="logo" aria-hidden="true"></div>
+      <div class="brand-logo">V</div>
       <div>
-        <div class="name">VQuiz</div>
-        <div class="tagline">Учишь слова — проверяешь себя</div>
+        <h1>VQuiz</h1>
+        <p>Create. Share. Solve.</p>
       </div>
     </div>
-
-    <div class="stats">
-      <div class="stat">
-        <div class="stat-label">Слов</div>
-        <div class="stat-value" id="statTotal">0</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Серия</div>
-        <div class="stat-value" id="statStreak">0</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Очки</div>
-        <div class="stat-value" id="statScore">0</div>
-      </div>
-    </div>
+    <nav class="tabs">
+      <button class="tab active" data-view="home">Главная</button>
+      <button class="tab" data-view="create">Создать квиз</button>
+      <button class="tab" data-view="library">Мои квизы</button>
+    </nav>
   </header>
 
-  <main class="wrap">
-    <nav class="tabs" role="tablist">
-      <button class="tab active" data-tab="play" role="tab">🎮 Играть</button>
-      <button class="tab" data-tab="add" role="tab">➕ Добавить</button>
-      <button class="tab" data-tab="list" role="tab">📚 База</button>
-    </nav>
-
-    <!-- PLAY -->
-    <section class="panel active" id="tab-play" role="tabpanel">
-      <div class="card">
-        <div class="card-head">
-          <div class="pill" id="modePill">Режим: Случайный</div>
-          <div class="controls">
-            <button class="btn ghost" id="btnResetScore" title="Сбросить очки/серию">Сброс</button>
-            <button class="btn" id="btnNext">Следующий</button>
+  <main class="container">
+    <section id="homeView" class="view active">
+      <div class="hero card">
+        <div>
+          <span class="badge">Рабочая модель</span>
+          <h2>Создавай квизы и делись ими с друзьями по ссылке</h2>
+          <p class="lead">
+            Это версия, которая подходит для GitHub Pages: без сервера, но уже умеет
+            создавать квизы, сохранять их в браузере, делиться по ссылке и проходить тест.
+          </p>
+          <div class="hero-actions">
+            <button class="primary" id="goCreateBtn">Создать первый квиз</button>
+            <button class="secondary" id="goLibraryBtn">Открыть мои квизы</button>
           </div>
         </div>
-
-        <div class="progress">
-          <div class="progress-bar" id="progressBar"></div>
-        </div>
-
-        <div class="quiz">
-          <div class="question">
-            <div class="q-label">Слово</div>
-            <div class="q-word" id="qWord">Добавь слова во вкладке “Добавить”</div>
-          </div>
-
-          <div class="answers" id="answers"></div>
-
-          <div class="feedback" id="feedback"></div>
+        <div class="hero-stats">
+          <div class="stat"><strong id="statQuizzes">0</strong><span>моих квизов</span></div>
+          <div class="stat"><strong id="statQuestions">0</strong><span>вопросов</span></div>
+          <div class="stat"><strong>∞</strong><span>шеринга по ссылке</span></div>
         </div>
       </div>
 
-      <div class="hint">
-        💡 Совет: добавляй новые слова каждый день — и играй 5–10 минут.
-      </div>
-    </section>
-
-    <!-- ADD -->
-    <section class="panel" id="tab-add" role="tabpanel">
-      <div class="card">
-        <div class="card-head">
-          <div class="pill">Добавление вопроса</div>
-          <div class="controls">
-            <button class="btn ghost" id="btnFillDemo">Демо</button>
-            <button class="btn" id="btnAdd">Сохранить</button>
-          </div>
+      <div class="grid two">
+        <div class="card">
+          <h3>Как это работает</h3>
+          <ol class="steps">
+            <li>Создаешь квиз с вопросами и вариантами ответов.</li>
+            <li>Сайт генерирует ссылку для друзей.</li>
+            <li>Друг открывает ссылку и проходит тест.</li>
+            <li>Результат показывается сразу после завершения.</li>
+          </ol>
         </div>
-
-        <div class="form">
-          <label class="field">
-            <span>Слово</span>
-            <input id="word" placeholder="Например: debt" maxlength="60" />
-          </label>
-
-          <div class="grid3">
-            <label class="field">
-              <span>Вариант 1</span>
-              <input id="option1" placeholder="например: долг" maxlength="80" />
-            </label>
-            <label class="field">
-              <span>Вариант 2</span>
-              <input id="option2" placeholder="например: депозит" maxlength="80" />
-            </label>
-            <label class="field">
-              <span>Вариант 3</span>
-              <input id="option3" placeholder="например: прибыль" maxlength="80" />
-            </label>
-          </div>
-
-          <label class="field">
-            <span>Правильный вариант</span>
-            <select id="correct">
-              <option value="0">Вариант 1</option>
-              <option value="1">Вариант 2</option>
-              <option value="2">Вариант 3</option>
-            </select>
-          </label>
-
-          <div class="row">
-            <label class="check">
-              <input type="checkbox" id="shuffleOptions" checked />
-              <span>Перемешивать варианты в игре</span>
-            </label>
-
-            <label class="check">
-              <input type="checkbox" id="autoNext" checked />
-              <span>Авто “Следующий” через 1.2с</span>
-            </label>
-          </div>
-
-          <div class="small" id="addMsg"></div>
+        <div class="card">
+          <h3>Важно</h3>
+          <p>
+            Эта модель работает <strong>без базы данных</strong>. Поэтому квизы хранятся в браузере автора,
+            а ссылка содержит сам квиз. Для общей статистики всех друзей на одном аккаунте позже подключим backend.
+          </p>
         </div>
       </div>
     </section>
 
-    <!-- LIST -->
-    <section class="panel" id="tab-list" role="tabpanel">
+    <section id="createView" class="view">
       <div class="card">
-        <div class="card-head">
-          <div class="pill">Твоя база слов</div>
-          <div class="controls">
-            <button class="btn ghost" id="btnExport">Экспорт</button>
-            <label class="btn ghost file">
-              Импорт
-              <input id="importFile" type="file" accept="application/json" />
+        <div class="section-head">
+          <div>
+            <span class="badge">Конструктор</span>
+            <h2>Создание квиза</h2>
+          </div>
+          <button class="secondary" id="addQuestionBtn">+ Добавить вопрос</button>
+        </div>
+
+        <form id="quizForm">
+          <div class="grid two">
+            <label>
+              <span>Название квиза</span>
+              <input type="text" id="quizTitle" placeholder="Например: Основы экономики" required />
             </label>
-            <button class="btn danger" id="btnClearAll">Очистить</button>
+            <label>
+              <span>Имя автора</span>
+              <input type="text" id="quizAuthor" placeholder="Например: Андрей" required />
+            </label>
+          </div>
+
+          <label>
+            <span>Краткое описание</span>
+            <textarea id="quizDescription" rows="3" placeholder="О чем этот квиз?"></textarea>
+          </label>
+
+          <div id="questionsContainer"></div>
+
+          <div class="action-row">
+            <button type="submit" class="primary">Сохранить квиз</button>
+            <button type="button" class="secondary" id="resetBuilderBtn">Очистить</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section id="libraryView" class="view">
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <span class="badge">Панель автора</span>
+            <h2>Мои квизы</h2>
           </div>
         </div>
+        <div id="myQuizzesEmpty" class="empty">
+          Пока нет квизов. Создай первый, и он появится здесь.
+        </div>
+        <div id="myQuizzesList" class="quiz-list"></div>
+      </div>
+    </section>
 
-        <div class="list-top">
-          <div class="search">
-            🔎 <input id="listSearch" placeholder="Поиск по слову или вариантам…" />
+    <section id="playView" class="view">
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <span class="badge">Решение</span>
+            <h2 id="playTitle">Прохождение квиза</h2>
+            <p id="playMeta" class="muted"></p>
           </div>
-          <div class="small" id="listInfo"></div>
+          <button class="secondary" id="backHomeBtn">На главную</button>
         </div>
 
-        <div class="list" id="list"></div>
+        <form id="solveForm">
+          <label>
+            <span>Твое имя</span>
+            <input type="text" id="solverName" placeholder="Введите имя" required />
+          </label>
+          <div id="solveQuestions"></div>
+          <div class="action-row">
+            <button type="submit" class="primary">Завершить квиз</button>
+          </div>
+        </form>
+
+        <div id="resultBox" class="result-box hidden"></div>
       </div>
     </section>
   </main>
 
-  <!-- Toasts -->
-  <div class="toasts" id="toasts" aria-live="polite"></div>
-
-  <!-- Tiny confetti canvas -->
-  <canvas id="confetti" class="confetti" width="1" height="1" aria-hidden="true"></canvas>
+  <template id="questionTemplate">
+    <div class="question-block card-soft">
+      <div class="question-top">
+        <h4 class="question-number">Вопрос</h4>
+        <button type="button" class="remove-btn">Удалить</button>
+      </div>
+      <label>
+        <span>Текст вопроса</span>
+        <input type="text" class="q-text" placeholder="Введите вопрос" required />
+      </label>
+      <div class="options-grid">
+        <label><span>Вариант A</span><input type="text" class="q-option" data-option="0" required /></label>
+        <label><span>Вариант B</span><input type="text" class="q-option" data-option="1" required /></label>
+        <label><span>Вариант C</span><input type="text" class="q-option" data-option="2" required /></label>
+        <label><span>Вариант D</span><input type="text" class="q-option" data-option="3" required /></label>
+      </div>
+      <label>
+        <span>Правильный ответ</span>
+        <select class="q-correct">
+          <option value="0">A</option>
+          <option value="1">B</option>
+          <option value="2">C</option>
+          <option value="3">D</option>
+        </select>
+      </label>
+    </div>
+  </template>
 
   <script src="script.js"></script>
 </body>
