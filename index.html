@@ -1,70 +1,73 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VQuiz — Create & Share</title>
+  <title>VQuiz — Rooms Edition</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="bg-orb orb-1"></div>
-  <div class="bg-orb orb-2"></div>
-
   <header class="topbar">
     <div class="brand">
       <div class="brand-logo">V</div>
       <div>
         <h1>VQuiz</h1>
-        <p>Create. Share. Solve.</p>
+        <p>Room Code Edition</p>
       </div>
     </div>
-    <nav class="tabs">
-      <button class="tab active" data-view="home">Главная</button>
-      <button class="tab" data-view="create">Создать квиз</button>
-      <button class="tab" data-view="library">Мои квизы</button>
-    </nav>
+
+    <div class="top-actions">
+      <button class="theme-toggle" id="themeToggle">🌙 Тёмная тема</button>
+      <nav class="tabs">
+        <button class="tab active" data-view="home">Главная</button>
+        <button class="tab" data-view="create">Создать квиз</button>
+        <button class="tab" data-view="library">Мои квизы</button>
+        <button class="tab" data-view="join">Войти по коду</button>
+      </nav>
+    </div>
   </header>
 
   <main class="container">
     <section id="homeView" class="view active">
-      <div class="hero card">
+      <div class="card hero">
         <div>
-          <span class="badge">Рабочая модель</span>
-          <h2>Создавай квизы и делись ими с друзьями по ссылке</h2>
+          <span class="badge">Новая версия</span>
+          <h2>Квизы с кодом комнаты, мгновенной проверкой и сменой темы</h2>
           <p class="lead">
-            Это версия, которая подходит для GitHub Pages: без сервера, но уже умеет
-            создавать квизы, сохранять их в браузере, делиться по ссылке и проходить тест.
+            Теперь игрок отвечает на один вопрос и сразу видит результат:
+            <strong>зелёный</strong> — правильно, <strong>красный</strong> — неправильно.
+            Также появилась тёмная тема и вход по коду комнаты.
           </p>
           <div class="hero-actions">
-            <button class="primary" id="goCreateBtn">Создать первый квиз</button>
-            <button class="secondary" id="goLibraryBtn">Открыть мои квизы</button>
+            <button class="primary" id="goCreateBtn">Создать квиз</button>
+            <button class="secondary" id="goJoinBtn">Войти по коду</button>
           </div>
         </div>
+
         <div class="hero-stats">
           <div class="stat"><strong id="statQuizzes">0</strong><span>моих квизов</span></div>
           <div class="stat"><strong id="statQuestions">0</strong><span>вопросов</span></div>
-          <div class="stat"><strong>∞</strong><span>шеринга по ссылке</span></div>
+          <div class="stat"><strong>2</strong><span>темы оформления</span></div>
         </div>
       </div>
 
       <div class="grid two">
         <div class="card">
-          <h3>Как это работает</h3>
-          <ol class="steps">
-            <li>Создаешь квиз с вопросами и вариантами ответов.</li>
-            <li>Сайт генерирует ссылку для друзей.</li>
-            <li>Друг открывает ссылку и проходит тест.</li>
-            <li>Результат показывается сразу после завершения.</li>
-          </ol>
+          <h3>Что нового</h3>
+          <ul class="clean-list">
+            <li>Ответ на каждый вопрос проверяется сразу.</li>
+            <li>Комната создаётся с коротким кодом доступа.</li>
+            <li>Можно переключать светлую и тёмную тему.</li>
+          </ul>
         </div>
         <div class="card">
           <h3>Важно</h3>
           <p>
-            Эта модель работает <strong>без базы данных</strong>. Поэтому квизы хранятся в браузере автора,
-            а ссылка содержит сам квиз. Для общей статистики всех друзей на одном аккаунте позже подключим backend.
+            В этой версии код комнаты работает как <strong>локальная модель</strong> без сервера.
+            Для настоящих общих комнат между разными устройствами нужен backend или Firebase.
           </p>
         </div>
       </div>
@@ -75,7 +78,7 @@
         <div class="section-head">
           <div>
             <span class="badge">Конструктор</span>
-            <h2>Создание квиза</h2>
+            <h2>Создать квиз</h2>
           </div>
           <button class="secondary" id="addQuestionBtn">+ Добавить вопрос</button>
         </div>
@@ -84,7 +87,7 @@
           <div class="grid two">
             <label>
               <span>Название квиза</span>
-              <input type="text" id="quizTitle" placeholder="Например: Основы экономики" required />
+              <input type="text" id="quizTitle" placeholder="Например: English Basics" required />
             </label>
             <label>
               <span>Имя автора</span>
@@ -93,7 +96,7 @@
           </div>
 
           <label>
-            <span>Краткое описание</span>
+            <span>Описание</span>
             <textarea id="quizDescription" rows="3" placeholder="О чем этот квиз?"></textarea>
           </label>
 
@@ -112,13 +115,32 @@
         <div class="section-head">
           <div>
             <span class="badge">Панель автора</span>
-            <h2>Мои квизы</h2>
+            <h2>Мои квизы и комнаты</h2>
           </div>
         </div>
-        <div id="myQuizzesEmpty" class="empty">
-          Пока нет квизов. Создай первый, и он появится здесь.
-        </div>
+        <div id="myQuizzesEmpty" class="empty">Пока нет квизов. Создай первый.</div>
         <div id="myQuizzesList" class="quiz-list"></div>
+      </div>
+    </section>
+
+    <section id="joinView" class="view">
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <span class="badge">Код доступа</span>
+            <h2>Войти в комнату</h2>
+            <p class="muted">Введи короткий код, который создал автор квиза.</p>
+          </div>
+        </div>
+
+        <form id="joinForm" class="join-form">
+          <input id="roomCodeInput" type="text" maxlength="6" placeholder="Например: A7K29Q" required />
+          <button type="submit" class="primary">Войти</button>
+        </form>
+
+        <p class="footer-note">
+          В этой статической версии комнаты доступны на том же устройстве и в том же браузере, где они были созданы.
+        </p>
       </div>
     </section>
 
@@ -126,25 +148,42 @@
       <div class="card">
         <div class="section-head">
           <div>
-            <span class="badge">Решение</span>
-            <h2 id="playTitle">Прохождение квиза</h2>
+            <span class="badge">Прохождение</span>
+            <h2 id="playTitle">Квиз</h2>
             <p id="playMeta" class="muted"></p>
           </div>
-          <button class="secondary" id="backHomeBtn">На главную</button>
+          <button class="secondary" id="backLibraryBtn">Назад</button>
         </div>
 
-        <form id="solveForm">
+        <div id="playerSetup">
           <label>
-            <span>Твое имя</span>
-            <input type="text" id="solverName" placeholder="Введите имя" required />
+            <span>Твоё имя</span>
+            <input type="text" id="solverName" placeholder="Введите имя" />
           </label>
-          <div id="solveQuestions"></div>
-          <div class="action-row">
-            <button type="submit" class="primary">Завершить квиз</button>
-          </div>
-        </form>
+          <button class="primary" id="startQuizBtn">Начать</button>
+        </div>
 
-        <div id="resultBox" class="result-box hidden"></div>
+        <div id="quizRunner" class="hidden">
+          <div class="progress-line"><div id="progressFill"></div></div>
+          <div class="question-shell">
+            <div class="question-head">
+              <span id="questionCountBadge" class="badge">Вопрос 1</span>
+              <span id="scoreBadge" class="score-pill">0 правильных</span>
+            </div>
+
+            <h3 id="questionText"></h3>
+            <div id="answerOptions" class="answer-options"></div>
+
+            <div id="feedbackBox" class="feedback hidden"></div>
+
+            <div class="action-row">
+              <button id="nextQuestionBtn" class="primary hidden">Следующий вопрос</button>
+              <button id="finishQuizBtn" class="primary hidden">Завершить</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="finalResult" class="result-box hidden"></div>
       </div>
     </section>
   </main>

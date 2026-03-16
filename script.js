@@ -1,15 +1,21 @@
 
-const STORAGE_KEY = "vquiz_local_quizzes_v2";
+const STORAGE_KEY = "vquiz_room_theme_v2_quizzes";
+const THEME_KEY = "vquiz_room_theme_mode";
 
 const state = {
   quizzes: loadQuizzes(),
-  currentSharedQuiz: null,
+  activeQuiz: null,
+  currentIndex: 0,
+  currentScore: 0,
+  solverName: "",
+  answers: [],
 };
 
 const views = {
   home: document.getElementById("homeView"),
   create: document.getElementById("createView"),
   library: document.getElementById("libraryView"),
+  join: document.getElementById("joinView"),
   play: document.getElementById("playView"),
 };
 
@@ -18,32 +24,48 @@ const questionsContainer = document.getElementById("questionsContainer");
 const questionTemplate = document.getElementById("questionTemplate");
 
 document.getElementById("goCreateBtn").addEventListener("click", () => switchView("create"));
-document.getElementById("goLibraryBtn").addEventListener("click", () => switchView("library"));
-document.getElementById("backHomeBtn").addEventListener("click", () => switchView("home"));
+document.getElementById("goJoinBtn").addEventListener("click", () => switchView("join"));
 document.getElementById("addQuestionBtn").addEventListener("click", () => addQuestionBlock());
 document.getElementById("resetBuilderBtn").addEventListener("click", resetBuilder);
 document.getElementById("quizForm").addEventListener("submit", handleSaveQuiz);
-document.getElementById("solveForm").addEventListener("submit", handleSolveQuiz);
+document.getElementById("joinForm").addEventListener("submit", handleJoinByCode);
+document.getElementById("startQuizBtn").addEventListener("click", startQuiz);
+document.getElementById("nextQuestionBtn").addEventListener("click", goNextQuestion);
+document.getElementById("finishQuizBtn").addEventListener("click", finishQuiz);
+document.getElementById("backLibraryBtn").addEventListener("click", () => switchView("library"));
+document.getElementById("themeToggle").addEventListener("click", toggleTheme);
 
 tabs.forEach(tab => tab.addEventListener("click", () => switchView(tab.dataset.view)));
 
 init();
 
 function init() {
+  applySavedTheme();
   addQuestionBlock();
   addQuestionBlock();
   renderLibrary();
   updateStats();
-  loadSharedQuizFromUrl();
 }
 
 function switchView(name) {
   Object.values(views).forEach(v => v.classList.remove("active"));
   views[name].classList.add("active");
   tabs.forEach(tab => tab.classList.toggle("active", tab.dataset.view === name));
-  if (name === "play") {
-    tabs.forEach(tab => tab.classList.remove("active"));
-  }
+  if (name === "play") tabs.forEach(tab => tab.classList.remove("active"));
+}
+
+function applySavedTheme() {
+  const theme = localStorage.getItem(THEME_KEY) || "light";
+  document.documentElement.setAttribute("data-theme", theme);
+  document.getElementById("themeToggle").textContent =
+    theme === "light" ? "🌙 Тёмная тема" : "☀️ Светлая тема";
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute("data-theme") || "light";
+  const next = current === "light" ? "dark" : "light";
+  localStorage.setItem(THEME_KEY, next);
+  applySavedTheme();
 }
 
 function addQuestionBlock(prefill = null) {
@@ -93,18 +115,13 @@ function handleSaveQuiz(e) {
     correctIndex: Number(block.querySelector(".q-correct").value),
   })).filter(q => q.text && q.options.every(Boolean));
 
-  if (!title || !author) {
-    alert("Заполни название и имя автора.");
-    return;
-  }
+  if (!title || !author) return alert("Заполни название и автора.");
+  if (!questions.length) return alert("Добавь хотя бы один вопрос.");
 
-  if (questions.length === 0) {
-    alert("Добавь хотя бы один вопрос.");
-    return;
-  }
-
+  const roomCode = generateRoomCode();
   const quiz = {
-    id: cryptoRandomId(),
+    id: "qz-" + Math.random().toString(36).slice(2, 10),
+    roomCode,
     title,
     author,
     description,
@@ -126,14 +143,13 @@ function renderLibrary() {
   const empty = document.getElementById("myQuizzesEmpty");
   list.innerHTML = "";
 
-  if (state.quizzes.length === 0) {
+  if (!state.quizzes.length) {
     empty.classList.remove("hidden");
     return;
   }
   empty.classList.add("hidden");
 
   state.quizzes.forEach(quiz => {
-    const shareUrl = buildShareUrl(quiz);
     const avg = quiz.attempts.length
       ? Math.round(quiz.attempts.reduce((s, a) => s + a.scorePercent, 0) / quiz.attempts.length)
       : 0;
@@ -145,8 +161,7 @@ function renderLibrary() {
         <div>
           <h3>${escapeHtml(quiz.title)}</h3>
           <div class="quiz-meta">
-            Автор: ${escapeHtml(quiz.author)} · Вопросов: ${quiz.questions.length} ·
-            Проходов на этом устройстве: ${quiz.attempts.length}
+            Автор: ${escapeHtml(quiz.author)} · Вопросов: ${quiz.questions.length} · Проходов: ${quiz.attempts.length}
           </div>
         </div>
         <span class="badge">${avg}% средний результат</span>
@@ -154,11 +169,14 @@ function renderLibrary() {
 
       <p class="muted">${escapeHtml(quiz.description || "Без описания")}</p>
 
-      <div class="mono">${escapeHtml(shareUrl)}</div>
+      <div class="code-pill">
+        Код комнаты:
+        <span>${quiz.roomCode}</span>
+      </div>
 
       <div class="quiz-actions">
-        <button class="primary" data-copy="${quiz.id}">Копировать ссылку</button>
-        <button class="secondary" data-open="${quiz.id}">Открыть квиз</button>
+        <button class="primary" data-copy="${quiz.roomCode}">Копировать код</button>
+        <button class="secondary" data-open="${quiz.roomCode}">Открыть</button>
         <button class="secondary" data-results="${quiz.id}">Результаты</button>
         <button class="remove-btn" data-delete="${quiz.id}">Удалить</button>
       </div>
@@ -166,17 +184,17 @@ function renderLibrary() {
       <div id="results-${quiz.id}" class="hidden"></div>
     `;
 
-    item.querySelector(`[data-copy="${quiz.id}"]`).addEventListener("click", async () => {
+    item.querySelector(`[data-copy="${quiz.roomCode}"]`).addEventListener("click", async () => {
       try {
-        await navigator.clipboard.writeText(shareUrl);
-        alert("Ссылка скопирована.");
+        await navigator.clipboard.writeText(quiz.roomCode);
+        alert("Код комнаты скопирован.");
       } catch {
-        alert("Не удалось скопировать. Скопируй вручную.");
+        alert("Не удалось скопировать код.");
       }
     });
 
-    item.querySelector(`[data-open="${quiz.id}"]`).addEventListener("click", () => {
-      window.location.href = shareUrl;
+    item.querySelector(`[data-open="${quiz.roomCode}"]`).addEventListener("click", () => {
+      openQuizByCode(quiz.roomCode);
     });
 
     item.querySelector(`[data-delete="${quiz.id}"]`).addEventListener("click", () => {
@@ -201,133 +219,168 @@ function renderLibrary() {
 
 function renderAttemptsHtml(attempts) {
   if (!attempts.length) {
-    return `<p class="footer-note">Пока нет сохраненных прохождений на этом устройстве.</p>`;
+    return `<p class="footer-note">Пока нет результатов на этом устройстве.</p>`;
   }
-
-  return `
-    <div class="answer-review">
-      ${attempts.map(a => `
-        <div class="review-item">
-          <strong>${escapeHtml(a.solverName)}</strong><br>
-          Результат: ${a.correctAnswers}/${a.totalQuestions} (${a.scorePercent}%)<br>
-          <span class="muted">${new Date(a.finishedAt).toLocaleString("ru-RU")}</span>
-        </div>
-      `).join("")}
-    </div>
-    <p class="footer-note">Важно: в статической версии результаты сохраняются локально в браузере того устройства, где проходили тест.</p>
-  `;
-}
-
-function buildShareUrl(quiz) {
-  const payload = {
-    id: quiz.id,
-    title: quiz.title,
-    author: quiz.author,
-    description: quiz.description,
-    questions: quiz.questions,
-  };
-  const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
-  return `${location.origin}${location.pathname}#play=${encoded}`;
-}
-
-function loadSharedQuizFromUrl() {
-  const hash = window.location.hash || "";
-  if (!hash.startsWith("#play=")) return;
-
-  try {
-    const encoded = hash.replace("#play=", "");
-    const json = decodeURIComponent(escape(atob(decodeURIComponent(encoded))));
-    const quiz = JSON.parse(json);
-    state.currentSharedQuiz = quiz;
-    renderPlayView(quiz);
-    switchView("play");
-  } catch (err) {
-    console.error(err);
-    alert("Не удалось открыть квиз по ссылке.");
-  }
-}
-
-function renderPlayView(quiz) {
-  document.getElementById("playTitle").textContent = quiz.title;
-  document.getElementById("playMeta").textContent =
-    `Автор: ${quiz.author} · Вопросов: ${quiz.questions.length}`;
-  document.getElementById("resultBox").classList.add("hidden");
-  document.getElementById("resultBox").innerHTML = "";
-  document.getElementById("solverName").value = "";
-
-  const wrap = document.getElementById("solveQuestions");
-  wrap.innerHTML = quiz.questions.map((q, idx) => `
-    <div class="question-block card-soft">
-      <h4>Вопрос ${idx + 1}</h4>
-      <p><strong>${escapeHtml(q.text)}</strong></p>
-      <div class="answer-review">
-        ${q.options.map((opt, optIndex) => `
-          <label class="card-soft" style="padding:12px; margin:0;">
-            <input type="radio" name="solve-${idx}" value="${optIndex}" required />
-            ${String.fromCharCode(65 + optIndex)}. ${escapeHtml(opt)}
-          </label>
-        `).join("")}
-      </div>
+  return attempts.map(a => `
+    <div class="card-soft" style="margin-top:10px;">
+      <strong>${escapeHtml(a.solverName)}</strong><br>
+      ${a.correctAnswers}/${a.totalQuestions} (${a.scorePercent}%)<br>
+      <span class="muted">${new Date(a.finishedAt).toLocaleString("ru-RU")}</span>
     </div>
   `).join("");
 }
 
-function handleSolveQuiz(e) {
+function handleJoinByCode(e) {
   e.preventDefault();
-  if (!state.currentSharedQuiz) return;
+  const code = document.getElementById("roomCodeInput").value.trim().toUpperCase();
+  openQuizByCode(code);
+}
 
-  const solverName = document.getElementById("solverName").value.trim();
-  if (!solverName) {
-    alert("Введи имя.");
+function openQuizByCode(code) {
+  const quiz = state.quizzes.find(q => q.roomCode === code);
+  if (!quiz) {
+    alert("Комната с таким кодом не найдена.");
     return;
   }
+  state.activeQuiz = structuredClone(quiz);
+  resetPlayState();
+  document.getElementById("playTitle").textContent = quiz.title;
+  document.getElementById("playMeta").textContent = `Автор: ${quiz.author} · Код комнаты: ${quiz.roomCode}`;
+  document.getElementById("playerSetup").classList.remove("hidden");
+  document.getElementById("quizRunner").classList.add("hidden");
+  document.getElementById("finalResult").classList.add("hidden");
+  document.getElementById("solverName").value = "";
+  switchView("play");
+}
 
-  const userAnswers = state.currentSharedQuiz.questions.map((_, idx) => {
-    const checked = document.querySelector(`input[name="solve-${idx}"]:checked`);
-    return checked ? Number(checked.value) : null;
+function resetPlayState() {
+  state.currentIndex = 0;
+  state.currentScore = 0;
+  state.solverName = "";
+  state.answers = [];
+  document.getElementById("feedbackBox").className = "feedback hidden";
+  document.getElementById("feedbackBox").innerHTML = "";
+  document.getElementById("nextQuestionBtn").classList.add("hidden");
+  document.getElementById("finishQuizBtn").classList.add("hidden");
+}
+
+function startQuiz() {
+  if (!state.activeQuiz) return;
+  const name = document.getElementById("solverName").value.trim();
+  if (!name) return alert("Введите имя.");
+  state.solverName = name;
+  document.getElementById("playerSetup").classList.add("hidden");
+  document.getElementById("quizRunner").classList.remove("hidden");
+  renderCurrentQuestion();
+}
+
+function renderCurrentQuestion() {
+  const quiz = state.activeQuiz;
+  const idx = state.currentIndex;
+  const q = quiz.questions[idx];
+
+  document.getElementById("questionCountBadge").textContent = `Вопрос ${idx + 1} из ${quiz.questions.length}`;
+  document.getElementById("scoreBadge").textContent = `${state.currentScore} правильных`;
+  document.getElementById("questionText").textContent = q.text;
+  document.getElementById("feedbackBox").className = "feedback hidden";
+  document.getElementById("feedbackBox").innerHTML = "";
+  document.getElementById("nextQuestionBtn").classList.add("hidden");
+  document.getElementById("finishQuizBtn").classList.add("hidden");
+
+  const progress = ((idx) / quiz.questions.length) * 100;
+  document.getElementById("progressFill").style.width = `${progress}%`;
+
+  const wrap = document.getElementById("answerOptions");
+  wrap.innerHTML = "";
+
+  q.options.forEach((option, optionIndex) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "answer-btn";
+    btn.innerHTML = `<strong>${String.fromCharCode(65 + optionIndex)}.</strong> ${escapeHtml(option)}`;
+    btn.addEventListener("click", () => handleAnswer(optionIndex, btn));
+    wrap.appendChild(btn);
+  });
+}
+
+function handleAnswer(selectedIndex, clickedBtn) {
+  const quiz = state.activeQuiz;
+  const q = quiz.questions[state.currentIndex];
+  const buttons = [...document.querySelectorAll(".answer-btn")];
+  const feedbackBox = document.getElementById("feedbackBox");
+  const isCorrect = selectedIndex === q.correctIndex;
+
+  buttons.forEach((btn, i) => {
+    btn.disabled = true;
+    btn.classList.add("locked");
+    if (i === q.correctIndex) btn.classList.add("correct");
   });
 
-  const correctAnswers = state.currentSharedQuiz.questions.reduce((sum, q, idx) => {
-    return sum + (q.correctIndex === userAnswers[idx] ? 1 : 0);
-  }, 0);
+  if (!isCorrect) clickedBtn.classList.add("wrong");
+  if (isCorrect) {
+    state.currentScore += 1;
+    feedbackBox.className = "feedback correct";
+    feedbackBox.textContent = "Правильно! Отличный ответ.";
+  } else {
+    feedbackBox.className = "feedback wrong";
+    feedbackBox.textContent = `Неправильно. Верный ответ: ${String.fromCharCode(65 + q.correctIndex)}. ${q.options[q.correctIndex]}`;
+  }
 
-  const totalQuestions = state.currentSharedQuiz.questions.length;
-  const scorePercent = Math.round((correctAnswers / totalQuestions) * 100);
+  state.answers.push({
+    question: q.text,
+    selectedIndex,
+    correctIndex: q.correctIndex,
+    isCorrect,
+  });
+
+  document.getElementById("scoreBadge").textContent = `${state.currentScore} правильных`;
+  feedbackBox.classList.remove("hidden");
+
+  const isLast = state.currentIndex === quiz.questions.length - 1;
+  document.getElementById("nextQuestionBtn").classList.toggle("hidden", isLast);
+  document.getElementById("finishQuizBtn").classList.toggle("hidden", !isLast);
+}
+
+function goNextQuestion() {
+  state.currentIndex += 1;
+  renderCurrentQuestion();
+}
+
+function finishQuiz() {
+  if (!state.activeQuiz) return;
+  const total = state.activeQuiz.questions.length;
+  const percent = Math.round((state.currentScore / total) * 100);
+  document.getElementById("progressFill").style.width = "100%";
+  document.getElementById("quizRunner").classList.add("hidden");
 
   const attempt = {
-    solverName,
-    correctAnswers,
-    totalQuestions,
-    scorePercent,
+    solverName: state.solverName,
+    correctAnswers: state.currentScore,
+    totalQuestions: total,
+    scorePercent: percent,
     finishedAt: new Date().toISOString(),
   };
 
-  const localQuiz = state.quizzes.find(q => q.id === state.currentSharedQuiz.id);
-  if (localQuiz) {
-    localQuiz.attempts.unshift(attempt);
+  const original = state.quizzes.find(q => q.roomCode === state.activeQuiz.roomCode);
+  if (original) {
+    original.attempts.unshift(attempt);
     saveQuizzes();
     renderLibrary();
     updateStats();
   }
 
-  const resultBox = document.getElementById("resultBox");
-  resultBox.classList.remove("hidden");
-  resultBox.innerHTML = `
-    <h3>Результат: ${correctAnswers} из ${totalQuestions}</h3>
-    <p><strong>${solverName}</strong>, ты набрал <strong>${scorePercent}%</strong>.</p>
-    <div class="answer-review">
-      ${state.currentSharedQuiz.questions.map((q, idx) => {
-        const ok = q.correctIndex === userAnswers[idx];
-        return `
-          <div class="review-item ${ok ? "correct" : "wrong"}">
-            <strong>Вопрос ${idx + 1}.</strong> ${escapeHtml(q.text)}<br>
-            Твой ответ: ${userAnswers[idx] !== null ? escapeHtml(q.options[userAnswers[idx]]) : "—"}<br>
-            Правильный ответ: ${escapeHtml(q.options[q.correctIndex])}
-          </div>
-        `;
-      }).join("")}
+  const result = document.getElementById("finalResult");
+  result.classList.remove("hidden");
+  result.innerHTML = `
+    <h3>Квиз завершён</h3>
+    <div class="result-summary">
+      <div class="result-card"><strong>${escapeHtml(state.solverName)}</strong><br><span class="muted">Игрок</span></div>
+      <div class="result-card"><strong>${state.currentScore}/${total}</strong><br><span class="muted">Правильных ответов</span></div>
+      <div class="result-card"><strong>${percent}%</strong><br><span class="muted">Итоговый результат</span></div>
     </div>
-    <p class="footer-note">Чтобы автор видел результаты всех друзей в одном месте, следующим шагом подключим backend и базу данных.</p>
+    <p class="footer-note" style="margin-top:16px;">
+      В этой версии ответы проверяются сразу после каждого вопроса.
+    </p>
   `;
 }
 
@@ -349,8 +402,13 @@ function loadQuizzes() {
   }
 }
 
-function cryptoRandomId() {
-  return "qz-" + Math.random().toString(36).slice(2, 10);
+function generateRoomCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  do {
+    code = Array.from({length: 6}, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  } while (state.quizzes.some(q => q.roomCode === code));
+  return code;
 }
 
 function escapeHtml(str = "") {
