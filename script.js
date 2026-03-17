@@ -1,9 +1,29 @@
 
-const STORAGE_KEY = "vquiz_room_theme_v2_quizzes";
-const THEME_KEY = "vquiz_room_theme_mode";
+import { firebaseConfig } from "./firebase-config.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  getDoc,
+  doc,
+  query,
+  where,
+  orderBy,
+  limit,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const CREATED_IDS_KEY = "vquiz_firebase_created_ids";
+const THEME_KEY = "vquiz_theme_mode";
 
 const state = {
-  quizzes: loadQuizzes(),
+  myQuizIds: loadCreatedIds(),
+  myQuizzes: [],
   activeQuiz: null,
   currentIndex: 0,
   currentScore: 0,
@@ -39,12 +59,12 @@ tabs.forEach(tab => tab.addEventListener("click", () => switchView(tab.dataset.v
 
 init();
 
-function init() {
+async function init() {
   applySavedTheme();
   addQuestionBlock();
   addQuestionBlock();
-  renderLibrary();
   updateStats();
+  await loadMyQuizzes();
 }
 
 function switchView(name) {
@@ -101,7 +121,7 @@ function resetBuilder() {
   addQuestionBlock();
 }
 
-function handleSaveQuiz(e) {
+async function handleSaveQuiz(e) {
   e.preventDefault();
 
   const title = document.getElementById("quizTitle").value.trim();
@@ -118,24 +138,54 @@ function handleSaveQuiz(e) {
   if (!title || !author) return alert("Заполни название и автора.");
   if (!questions.length) return alert("Добавь хотя бы один вопрос.");
 
-  const roomCode = generateRoomCode();
-  const quiz = {
-    id: "qz-" + Math.random().toString(36).slice(2, 10),
+  const roomCode = await generateUniqueRoomCode();
+
+  const payload = {
     roomCode,
     title,
     author,
     description,
-    createdAt: new Date().toISOString(),
     questions,
-    attempts: [],
+    createdAt: serverTimestamp(),
   };
 
-  state.quizzes.unshift(quiz);
-  saveQuizzes();
+  try {
+    const ref = await addDoc(collection(db, "quizzes"), payload);
+    state.myQuizIds.unshift(ref.id);
+    saveCreatedIds();
+    resetBuilder();
+    await loadMyQuizzes();
+    switchView("library");
+    alert(`Квиз сохранён. Код комнаты: ${roomCode}`);
+  } catch (err) {
+    console.error(err);
+    alert("Ошибка при сохранении квиза в Firebase.");
+  }
+}
+
+async function loadMyQuizzes() {
+  if (!state.myQuizIds.length) {
+    state.myQuizzes = [];
+    renderLibrary();
+    updateStats();
+    return;
+  }
+
+  const loaded = [];
+  for (const id of state.myQuizIds) {
+    try {
+      const snap = await getDoc(doc(db, "quizzes", id));
+      if (snap.exists()) {
+        loaded.push({ id: snap.id, ...snap.data() });
+      }
+    } catch (err) {
+      console.error("Failed to load quiz", id, err);
+    }
+  }
+
+  state.myQuizzes = loaded;
   renderLibrary();
   updateStats();
-  resetBuilder();
-  switchView("library");
 }
 
 function renderLibrary() {
@@ -143,17 +193,13 @@ function renderLibrary() {
   const empty = document.getElementById("myQuizzesEmpty");
   list.innerHTML = "";
 
-  if (!state.quizzes.length) {
+  if (!state.myQuizzes.length) {
     empty.classList.remove("hidden");
     return;
   }
   empty.classList.add("hidden");
 
-  state.quizzes.forEach(quiz => {
-    const avg = quiz.attempts.length
-      ? Math.round(quiz.attempts.reduce((s, a) => s + a.scorePercent, 0) / quiz.attempts.length)
-      : 0;
-
+  state.myQuizzes.forEach(quiz => {
     const item = document.createElement("div");
     item.className = "quiz-item";
     item.innerHTML = `
@@ -161,10 +207,10 @@ function renderLibrary() {
         <div>
           <h3>${escapeHtml(quiz.title)}</h3>
           <div class="quiz-meta">
-            Автор: ${escapeHtml(quiz.author)} · Вопросов: ${quiz.questions.length} · Проходов: ${quiz.attempts.length}
+            Автор: ${escapeHtml(quiz.author)} · Вопросов: ${quiz.questions.length}
           </div>
         </div>
-        <span class="badge">${avg}% средний результат</span>
+        <span class="badge">${quiz.roomCode}</span>
       </div>
 
       <p class="muted">${escapeHtml(quiz.description || "Без описания")}</p>
@@ -178,7 +224,6 @@ function renderLibrary() {
         <button class="primary" data-copy="${quiz.roomCode}">Копировать код</button>
         <button class="secondary" data-open="${quiz.roomCode}">Открыть</button>
         <button class="secondary" data-results="${quiz.id}">Результаты</button>
-        <button class="remove-btn" data-delete="${quiz.id}">Удалить</button>
       </div>
 
       <div id="results-${quiz.id}" class="hidden"></div>
@@ -197,19 +242,13 @@ function renderLibrary() {
       openQuizByCode(quiz.roomCode);
     });
 
-    item.querySelector(`[data-delete="${quiz.id}"]`).addEventListener("click", () => {
-      if (!confirm("Удалить этот квиз?")) return;
-      state.quizzes = state.quizzes.filter(q => q.id !== quiz.id);
-      saveQuizzes();
-      renderLibrary();
-      updateStats();
-    });
-
-    item.querySelector(`[data-results="${quiz.id}"]`).addEventListener("click", () => {
+    item.querySelector(`[data-results="${quiz.id}"]`).addEventListener("click", async () => {
       const box = item.querySelector(`#results-${quiz.id}`);
       box.classList.toggle("hidden");
       if (!box.classList.contains("hidden")) {
-        box.innerHTML = renderAttemptsHtml(quiz.attempts);
+        box.innerHTML = "<p class='footer-note'>Загрузка результатов...</p>";
+        const html = await renderAttemptsHtml(quiz.id);
+        box.innerHTML = html;
       }
     });
 
@@ -217,40 +256,65 @@ function renderLibrary() {
   });
 }
 
-function renderAttemptsHtml(attempts) {
-  if (!attempts.length) {
-    return `<p class="footer-note">Пока нет результатов на этом устройстве.</p>`;
+async function renderAttemptsHtml(quizId) {
+  try {
+    const qRef = query(
+      collection(db, "quizzes", quizId, "attempts"),
+      orderBy("finishedAt", "desc"),
+      limit(30)
+    );
+    const snap = await getDocs(qRef);
+    if (snap.empty) {
+      return `<p class="footer-note">Пока нет результатов.</p>`;
+    }
+
+    return snap.docs.map(d => {
+      const a = d.data();
+      return `
+        <div class="card-soft" style="margin-top:10px;">
+          <strong>${escapeHtml(a.solverName)}</strong><br>
+          ${a.correctAnswers}/${a.totalQuestions} (${a.scorePercent}%)<br>
+          <span class="muted">${formatDate(a.finishedAt)}</span>
+        </div>
+      `;
+    }).join("");
+  } catch (err) {
+    console.error(err);
+    return `<p class="footer-note">Не удалось загрузить результаты.</p>`;
   }
-  return attempts.map(a => `
-    <div class="card-soft" style="margin-top:10px;">
-      <strong>${escapeHtml(a.solverName)}</strong><br>
-      ${a.correctAnswers}/${a.totalQuestions} (${a.scorePercent}%)<br>
-      <span class="muted">${new Date(a.finishedAt).toLocaleString("ru-RU")}</span>
-    </div>
-  `).join("");
 }
 
-function handleJoinByCode(e) {
+async function handleJoinByCode(e) {
   e.preventDefault();
   const code = document.getElementById("roomCodeInput").value.trim().toUpperCase();
-  openQuizByCode(code);
+  await openQuizByCode(code);
 }
 
-function openQuizByCode(code) {
-  const quiz = state.quizzes.find(q => q.roomCode === code);
-  if (!quiz) {
-    alert("Комната с таким кодом не найдена.");
-    return;
+async function openQuizByCode(code) {
+  try {
+    const qRef = query(collection(db, "quizzes"), where("roomCode", "==", code), limit(1));
+    const snap = await getDocs(qRef);
+    if (snap.empty) {
+      alert("Комната с таким кодом не найдена.");
+      return;
+    }
+
+    const docSnap = snap.docs[0];
+    state.activeQuiz = { id: docSnap.id, ...docSnap.data() };
+
+    resetPlayState();
+    document.getElementById("playTitle").textContent = state.activeQuiz.title;
+    document.getElementById("playMeta").textContent =
+      `Автор: ${state.activeQuiz.author} · Код комнаты: ${state.activeQuiz.roomCode}`;
+    document.getElementById("playerSetup").classList.remove("hidden");
+    document.getElementById("quizRunner").classList.add("hidden");
+    document.getElementById("finalResult").classList.add("hidden");
+    document.getElementById("solverName").value = "";
+    switchView("play");
+  } catch (err) {
+    console.error(err);
+    alert("Ошибка при открытии комнаты.");
   }
-  state.activeQuiz = structuredClone(quiz);
-  resetPlayState();
-  document.getElementById("playTitle").textContent = quiz.title;
-  document.getElementById("playMeta").textContent = `Автор: ${quiz.author} · Код комнаты: ${quiz.roomCode}`;
-  document.getElementById("playerSetup").classList.remove("hidden");
-  document.getElementById("quizRunner").classList.add("hidden");
-  document.getElementById("finalResult").classList.add("hidden");
-  document.getElementById("solverName").value = "";
-  switchView("play");
 }
 
 function resetPlayState() {
@@ -346,7 +410,7 @@ function goNextQuestion() {
   renderCurrentQuestion();
 }
 
-function finishQuiz() {
+async function finishQuiz() {
   if (!state.activeQuiz) return;
   const total = state.activeQuiz.questions.length;
   const percent = Math.round((state.currentScore / total) * 100);
@@ -358,15 +422,14 @@ function finishQuiz() {
     correctAnswers: state.currentScore,
     totalQuestions: total,
     scorePercent: percent,
-    finishedAt: new Date().toISOString(),
+    answers: state.answers,
+    finishedAt: serverTimestamp(),
   };
 
-  const original = state.quizzes.find(q => q.roomCode === state.activeQuiz.roomCode);
-  if (original) {
-    original.attempts.unshift(attempt);
-    saveQuizzes();
-    renderLibrary();
-    updateStats();
+  try {
+    await addDoc(collection(db, "quizzes", state.activeQuiz.id, "attempts"), attempt);
+  } catch (err) {
+    console.error(err);
   }
 
   const result = document.getElementById("finalResult");
@@ -379,36 +442,46 @@ function finishQuiz() {
       <div class="result-card"><strong>${percent}%</strong><br><span class="muted">Итоговый результат</span></div>
     </div>
     <p class="footer-note" style="margin-top:16px;">
-      В этой версии ответы проверяются сразу после каждого вопроса.
+      Результат сохранён в Firebase и доступен автору в разделе «Мои квизы».
     </p>
   `;
 }
 
 function updateStats() {
-  document.getElementById("statQuizzes").textContent = state.quizzes.length;
+  document.getElementById("statQuizzes").textContent = state.myQuizzes.length;
   document.getElementById("statQuestions").textContent =
-    state.quizzes.reduce((sum, q) => sum + q.questions.length, 0);
+    state.myQuizzes.reduce((sum, q) => sum + q.questions.length, 0);
 }
 
-function saveQuizzes() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.quizzes));
+async function generateUniqueRoomCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  while (true) {
+    const code = Array.from({length: 6}, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    const qRef = query(collection(db, "quizzes"), where("roomCode", "==", code), limit(1));
+    const snap = await getDocs(qRef);
+    if (snap.empty) return code;
+  }
 }
 
-function loadQuizzes() {
+function loadCreatedIds() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    return JSON.parse(localStorage.getItem(CREATED_IDS_KEY)) || [];
   } catch {
     return [];
   }
 }
 
-function generateRoomCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "";
-  do {
-    code = Array.from({length: 6}, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-  } while (state.quizzes.some(q => q.roomCode === code));
-  return code;
+function saveCreatedIds() {
+  localStorage.setItem(CREATED_IDS_KEY, JSON.stringify(state.myQuizIds));
+}
+
+function formatDate(value) {
+  try {
+    if (value?.toDate) return value.toDate().toLocaleString("ru-RU");
+    return new Date(value).toLocaleString("ru-RU");
+  } catch {
+    return "Дата недоступна";
+  }
 }
 
 function escapeHtml(str = "") {

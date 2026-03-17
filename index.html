@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VQuiz — Rooms Edition</title>
+  <title>VQuiz — Firebase Rooms</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
       <div class="brand-logo">V</div>
       <div>
         <h1>VQuiz</h1>
-        <p>Room Code Edition</p>
+        <p>Realtime Room Code Version</p>
       </div>
     </div>
 
@@ -34,12 +34,13 @@
     <section id="homeView" class="view active">
       <div class="card hero">
         <div>
-          <span class="badge">Новая версия</span>
-          <h2>Квизы с кодом комнаты, мгновенной проверкой и сменой темы</h2>
+          <span class="badge">Firebase edition</span>
+          <h2>Реальные комнаты с кодом доступа для друзей</h2>
           <p class="lead">
-            Теперь игрок отвечает на один вопрос и сразу видит результат:
+            Автор создаёт квиз, получает <strong>короткий код комнаты</strong>, отправляет его друзьям,
+            а друзья заходят <strong>с любого устройства</strong> и проходят тест.
+            После каждого ответа сразу показывается:
             <strong>зелёный</strong> — правильно, <strong>красный</strong> — неправильно.
-            Также появилась тёмная тема и вход по коду комнаты.
           </p>
           <div class="hero-actions">
             <button class="primary" id="goCreateBtn">Создать квиз</button>
@@ -50,24 +51,26 @@
         <div class="hero-stats">
           <div class="stat"><strong id="statQuizzes">0</strong><span>моих квизов</span></div>
           <div class="stat"><strong id="statQuestions">0</strong><span>вопросов</span></div>
-          <div class="stat"><strong>2</strong><span>темы оформления</span></div>
+          <div class="stat"><strong>∞</strong><span>доступ с разных устройств</span></div>
         </div>
       </div>
 
       <div class="grid two">
         <div class="card">
-          <h3>Что нового</h3>
+          <h3>Что умеет эта версия</h3>
           <ul class="clean-list">
-            <li>Ответ на каждый вопрос проверяется сразу.</li>
-            <li>Комната создаётся с коротким кодом доступа.</li>
-            <li>Можно переключать светлую и тёмную тему.</li>
+            <li>Создание квиза с вопросами и вариантами ответов.</li>
+            <li>Короткий room code вместо длинной ссылки.</li>
+            <li>Мгновенная проверка каждого ответа.</li>
+            <li>Сохранение результатов друзей в облаке.</li>
+            <li>Светлая и тёмная тема.</li>
           </ul>
         </div>
         <div class="card">
           <h3>Важно</h3>
           <p>
-            В этой версии код комнаты работает как <strong>локальная модель</strong> без сервера.
-            Для настоящих общих комнат между разными устройствами нужен backend или Firebase.
+            Чтобы эта версия заработала в интернете, нужно один раз подключить Firebase.
+            Код уже готов — тебе останется вставить свои ключи Firebase и загрузить файлы в GitHub.
           </p>
         </div>
       </div>
@@ -87,7 +90,7 @@
           <div class="grid two">
             <label>
               <span>Название квиза</span>
-              <input type="text" id="quizTitle" placeholder="Например: English Basics" required />
+              <input type="text" id="quizTitle" placeholder="Например: English Grammar" required />
             </label>
             <label>
               <span>Имя автора</span>
@@ -115,7 +118,8 @@
         <div class="section-head">
           <div>
             <span class="badge">Панель автора</span>
-            <h2>Мои квизы и комнаты</h2>
+            <h2>Мои квизы</h2>
+            <p class="muted">Здесь отображаются квизы, созданные с этого браузера.</p>
           </div>
         </div>
         <div id="myQuizzesEmpty" class="empty">Пока нет квизов. Создай первый.</div>
@@ -127,9 +131,9 @@
       <div class="card">
         <div class="section-head">
           <div>
-            <span class="badge">Код доступа</span>
+            <span class="badge">Код комнаты</span>
             <h2>Войти в комнату</h2>
-            <p class="muted">Введи короткий код, который создал автор квиза.</p>
+            <p class="muted">Друг вводит код и проходит квиз с любого устройства.</p>
           </div>
         </div>
 
@@ -137,10 +141,6 @@
           <input id="roomCodeInput" type="text" maxlength="6" placeholder="Например: A7K29Q" required />
           <button type="submit" class="primary">Войти</button>
         </form>
-
-        <p class="footer-note">
-          В этой статической версии комнаты доступны на том же устройстве и в том же браузере, где они были созданы.
-        </p>
       </div>
     </section>
 
@@ -216,6 +216,6 @@
     </div>
   </template>
 
-  <script src="script.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>
