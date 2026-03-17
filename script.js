@@ -54,6 +54,9 @@ document.getElementById("nextQuestionBtn").addEventListener("click", goNextQuest
 document.getElementById("finishQuizBtn").addEventListener("click", finishQuiz);
 document.getElementById("backLibraryBtn").addEventListener("click", () => switchView("library"));
 document.getElementById("themeToggle").addEventListener("click", toggleTheme);
+document.getElementById("retryQuizBtn").addEventListener("click", retryQuiz);
+document.getElementById("backToJoinBtn").addEventListener("click", () => switchView("join"));
+
 
 tabs.forEach(tab => tab.addEventListener("click", () => switchView(tab.dataset.view)));
 
@@ -310,6 +313,7 @@ async function openQuizByCode(code) {
     document.getElementById("quizRunner").classList.add("hidden");
     document.getElementById("finalResult").classList.add("hidden");
     document.getElementById("solverName").value = "";
+    document.getElementById("retryActions").classList.add("hidden");
     switchView("play");
   } catch (err) {
     console.error(err);
@@ -322,10 +326,15 @@ function resetPlayState() {
   state.currentScore = 0;
   state.solverName = "";
   state.answers = [];
+
   document.getElementById("feedbackBox").className = "feedback hidden";
   document.getElementById("feedbackBox").innerHTML = "";
   document.getElementById("nextQuestionBtn").classList.add("hidden");
   document.getElementById("finishQuizBtn").classList.add("hidden");
+  document.getElementById("finalResult").classList.add("hidden");
+  document.getElementById("finalResult").innerHTML = "";
+  document.getElementById("retryActions").classList.add("hidden");
+  document.getElementById("progressFill").style.width = "0%";
 }
 
 function startQuiz() {
@@ -416,7 +425,7 @@ async function finishQuiz() {
   const percent = Math.round((state.currentScore / total) * 100);
   document.getElementById("progressFill").style.width = "100%";
   document.getElementById("quizRunner").classList.add("hidden");
-
+  document.getElementById("retryActions").classList.remove("hidden");
   const attempt = {
     solverName: state.solverName,
     correctAnswers: state.currentScore,
@@ -491,4 +500,14 @@ function escapeHtml(str = "") {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+function retryQuiz() {
+  if (!state.activeQuiz) return;
+
+  resetPlayState();
+  document.getElementById("playerSetup").classList.remove("hidden");
+  document.getElementById("quizRunner").classList.add("hidden");
+  document.getElementById("finalResult").classList.add("hidden");
+  document.getElementById("retryActions").classList.add("hidden");
+  document.getElementById("solverName").value = state.solverName || "";
 }
