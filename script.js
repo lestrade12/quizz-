@@ -12,7 +12,8 @@ import {
   where,
   orderBy,
   limit,
-  serverTimestamp
+  serverTimestamp,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const app = initializeApp(firebaseConfig);
@@ -510,4 +511,17 @@ function retryQuiz() {
   document.getElementById("finalResult").classList.add("hidden");
   document.getElementById("retryActions").classList.add("hidden");
   document.getElementById("solverName").value = state.solverName || "";
+}
+async function updateExistingQuiz(quizId, updatedQuestions) {
+  try {
+    await updateDoc(doc(db, "quizzes", quizId), {
+      questions: updatedQuestions,
+      updatedAt: serverTimestamp(),
+    });
+
+    alert("Квиз успешно обновлён. Код комнаты остался прежним.");
+  } catch (err) {
+    console.error(err);
+    alert("Ошибка обновления квиза");
+  }
 }
