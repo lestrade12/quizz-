@@ -103,7 +103,6 @@ body{min-height:100vh}
 .stat span,.muted,.footer-note{color:var(--muted)}
 .grid{display:grid;gap:18px;margin-top:18px}
 .grid.two{grid-template-columns:1fr 1fr}
-.clean-list{margin:0;padding-left:18px;color:var(--muted)}
 .section-head{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:18px}
 label{display:block;margin-bottom:14px}
 label span{display:block;font-size:.95rem;font-weight:600;margin-bottom:8px}
@@ -152,12 +151,15 @@ input:focus,textarea:focus,select:focus{border-color:var(--primary);box-shadow:0
 .result-box h3{margin-top:0}
 .result-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .result-card{background:var(--card);border:1px solid var(--line);padding:16px;border-radius:18px}
-.mono{
-  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  background:color-mix(in srgb, var(--primary) 10%, var(--soft));
-  border:1px solid var(--line);
-  padding:10px 12px;border-radius:14px;
-  overflow:auto
+.edit-new-badge{
+  display:inline-block;
+  margin-left:10px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:color-mix(in srgb, var(--primary) 16%, var(--soft));
+  border:1px solid var(--primary);
+  font-size:.8rem;
+  font-weight:700;
 }
 @media (max-width:860px){
   .hero,.grid.two,.options-grid,.result-summary{grid-template-columns:1fr}

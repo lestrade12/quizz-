@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VQuiz — Firebase Rooms</title>
+  <title>VQuiz — Editable Firebase Rooms</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
       <div class="brand-logo">V</div>
       <div>
         <h1>VQuiz</h1>
-        <p>Realtime Room Code Version</p>
+        <p>Editable Room Code Version</p>
       </div>
     </div>
 
@@ -35,12 +35,11 @@
       <div class="card hero">
         <div>
           <span class="badge">Firebase edition</span>
-          <h2>Реальные комнаты с кодом доступа для друзей</h2>
+          <h2>Создавай, редактируй и проходи квизы по коду комнаты</h2>
           <p class="lead">
-            Автор создаёт квиз, получает <strong>короткий код комнаты</strong>, отправляет его друзьям,
-            а друзья заходят <strong>с любого устройства</strong> и проходят тест.
-            После каждого ответа сразу показывается:
-            <strong>зелёный</strong> — правильно, <strong>красный</strong> — неправильно.
+            Теперь ты можешь не только создавать квизы, но и <strong>редактировать их позже</strong>:
+            добавлять новые вопросы сверху, менять старые вопросы, а
+            <strong>код комнаты останется тем же</strong>.
           </p>
           <div class="hero-actions">
             <button class="primary" id="goCreateBtn">Создать квиз</button>
@@ -51,27 +50,7 @@
         <div class="hero-stats">
           <div class="stat"><strong id="statQuizzes">0</strong><span>моих квизов</span></div>
           <div class="stat"><strong id="statQuestions">0</strong><span>вопросов</span></div>
-          <div class="stat"><strong>∞</strong><span>доступ с разных устройств</span></div>
-        </div>
-      </div>
-
-      <div class="grid two">
-        <div class="card">
-          <h3>Что умеет эта версия</h3>
-          <ul class="clean-list">
-            <li>Создание квиза с вопросами и вариантами ответов.</li>
-            <li>Короткий room code вместо длинной ссылки.</li>
-            <li>Мгновенная проверка каждого ответа.</li>
-            <li>Сохранение результатов друзей в облаке.</li>
-            <li>Светлая и тёмная тема.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3>Важно</h3>
-          <p>
-            Чтобы эта версия заработала в интернете, нужно один раз подключить Firebase.
-            Код уже готов — тебе останется вставить свои ключи Firebase и загрузить файлы в GitHub.
-          </p>
+          <div class="stat"><strong>∞</strong><span>повторных попыток</span></div>
         </div>
       </div>
     </section>
@@ -119,11 +98,53 @@
           <div>
             <span class="badge">Панель автора</span>
             <h2>Мои квизы</h2>
-            <p class="muted">Здесь отображаются квизы, созданные с этого браузера.</p>
+            <p class="muted">Здесь можно открыть, изменить и посмотреть результаты.</p>
           </div>
         </div>
         <div id="myQuizzesEmpty" class="empty">Пока нет квизов. Создай первый.</div>
         <div id="myQuizzesList" class="quiz-list"></div>
+      </div>
+    </section>
+
+    <section id="editView" class="view">
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <span class="badge">Редактирование</span>
+            <h2>Изменить существующий квиз</h2>
+            <p class="muted">Можно добавлять новые вопросы сверху. Код комнаты не изменится.</p>
+          </div>
+          <button class="secondary" id="cancelEditBtn">Отмена</button>
+        </div>
+
+        <form id="editQuizForm">
+          <div class="grid two">
+            <label>
+              <span>Название квиза</span>
+              <input type="text" id="editQuizTitle" required />
+            </label>
+            <label>
+              <span>Имя автора</span>
+              <input type="text" id="editQuizAuthor" required />
+            </label>
+          </div>
+
+          <label>
+            <span>Описание</span>
+            <textarea id="editQuizDescription" rows="3"></textarea>
+          </label>
+
+          <div class="action-row">
+            <button type="button" class="secondary" id="addEditQuestionTopBtn">+ Добавить вопрос сверху</button>
+            <button type="button" class="secondary" id="addEditQuestionBottomBtn">+ Добавить вопрос вниз</button>
+          </div>
+
+          <div id="editQuestionsContainer"></div>
+
+          <div class="action-row">
+            <button type="submit" class="primary">Сохранить изменения</button>
+          </div>
+        </form>
       </div>
     </section>
 
@@ -184,11 +205,10 @@
         </div>
 
         <div id="finalResult" class="result-box hidden"></div>
-
-<div id="retryActions" class="action-row hidden">
-  <button id="retryQuizBtn" class="primary">Пройти заново</button>
-  <button id="backToJoinBtn" class="secondary">Ввести другой код</button>
-</div>
+        <div id="retryActions" class="action-row hidden">
+          <button id="retryQuizBtn" class="primary">Пройти заново</button>
+          <button id="backToJoinBtn" class="secondary">Ввести другой код</button>
+        </div>
       </div>
     </section>
   </main>

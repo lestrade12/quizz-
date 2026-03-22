@@ -1,4 +1,3 @@
-
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -30,6 +29,7 @@ const state = {
   currentScore: 0,
   solverName: "",
   answers: [],
+  editingQuizId: null,
 };
 
 const views = {
@@ -38,15 +38,17 @@ const views = {
   library: document.getElementById("libraryView"),
   join: document.getElementById("joinView"),
   play: document.getElementById("playView"),
+  edit: document.getElementById("editView"),
 };
 
 const tabs = document.querySelectorAll(".tab");
 const questionsContainer = document.getElementById("questionsContainer");
+const editQuestionsContainer = document.getElementById("editQuestionsContainer");
 const questionTemplate = document.getElementById("questionTemplate");
 
 document.getElementById("goCreateBtn").addEventListener("click", () => switchView("create"));
 document.getElementById("goJoinBtn").addEventListener("click", () => switchView("join"));
-document.getElementById("addQuestionBtn").addEventListener("click", () => addQuestionBlock());
+document.getElementById("addQuestionBtn").addEventListener("click", () => addQuestionBlock(questionsContainer));
 document.getElementById("resetBuilderBtn").addEventListener("click", resetBuilder);
 document.getElementById("quizForm").addEventListener("submit", handleSaveQuiz);
 document.getElementById("joinForm").addEventListener("submit", handleJoinByCode);
@@ -55,9 +57,12 @@ document.getElementById("nextQuestionBtn").addEventListener("click", goNextQuest
 document.getElementById("finishQuizBtn").addEventListener("click", finishQuiz);
 document.getElementById("backLibraryBtn").addEventListener("click", () => switchView("library"));
 document.getElementById("themeToggle").addEventListener("click", toggleTheme);
+document.getElementById("cancelEditBtn").addEventListener("click", () => switchView("library"));
+document.getElementById("addEditQuestionTopBtn").addEventListener("click", () => addQuestionBlock(editQuestionsContainer, null, true));
+document.getElementById("addEditQuestionBottomBtn").addEventListener("click", () => addQuestionBlock(editQuestionsContainer, null, false));
+document.getElementById("editQuizForm").addEventListener("submit", handleUpdateQuiz);
 document.getElementById("retryQuizBtn").addEventListener("click", retryQuiz);
 document.getElementById("backToJoinBtn").addEventListener("click", () => switchView("join"));
-
 
 tabs.forEach(tab => tab.addEventListener("click", () => switchView(tab.dataset.view)));
 
@@ -65,8 +70,8 @@ init();
 
 async function init() {
   applySavedTheme();
-  addQuestionBlock();
-  addQuestionBlock();
+  addQuestionBlock(questionsContainer);
+  addQuestionBlock(questionsContainer);
   updateStats();
   await loadMyQuizzes();
 }
@@ -75,7 +80,7 @@ function switchView(name) {
   Object.values(views).forEach(v => v.classList.remove("active"));
   views[name].classList.add("active");
   tabs.forEach(tab => tab.classList.toggle("active", tab.dataset.view === name));
-  if (name === "play") tabs.forEach(tab => tab.classList.remove("active"));
+  if (name === "play" || name === "edit") tabs.forEach(tab => tab.classList.remove("active"));
 }
 
 function applySavedTheme() {
@@ -92,7 +97,7 @@ function toggleTheme() {
   applySavedTheme();
 }
 
-function addQuestionBlock(prefill = null) {
+function buildQuestionBlock(prefill = null, isNew = false) {
   const clone = questionTemplate.content.cloneNode(true);
   const block = clone.querySelector(".question-block");
   const removeBtn = clone.querySelector(".remove-btn");
@@ -108,21 +113,52 @@ function addQuestionBlock(prefill = null) {
     clone.querySelector(".q-correct").value = String(prefill.correctIndex ?? 0);
   }
 
-  questionsContainer.appendChild(clone);
+  if (isNew) {
+    const top = clone.querySelector(".question-top");
+    const badge = document.createElement("span");
+    badge.className = "edit-new-badge";
+    badge.textContent = "Новый сверху";
+    top.querySelector(".question-number").after(badge);
+  }
+
+  return clone;
+}
+
+function addQuestionBlock(container, prefill = null, insertTop = false) {
+  const node = buildQuestionBlock(prefill, insertTop);
+  if (insertTop && container.firstChild) {
+    container.prepend(node);
+  } else {
+    container.appendChild(node);
+  }
   renumberQuestions();
 }
 
 function renumberQuestions() {
-  [...questionsContainer.querySelectorAll(".question-block")].forEach((block, idx) => {
+  const createBlocks = [...document.querySelectorAll("#questionsContainer .question-block")];
+  createBlocks.forEach((block, idx) => {
     block.querySelector(".question-number").textContent = `Вопрос ${idx + 1}`;
   });
+
+  const editBlocks = [...document.querySelectorAll("#editQuestionsContainer .question-block")];
+  editBlocks.forEach((block, idx) => {
+    block.querySelector(".question-number").textContent = `Вопрос ${idx + 1}`;
+  });
+}
+
+function collectQuestions(container) {
+  return [...container.querySelectorAll(".question-block")].map(block => ({
+    text: block.querySelector(".q-text").value.trim(),
+    options: [...block.querySelectorAll(".q-option")].map(i => i.value.trim()),
+    correctIndex: Number(block.querySelector(".q-correct").value),
+  })).filter(q => q.text && q.options.every(Boolean));
 }
 
 function resetBuilder() {
   document.getElementById("quizForm").reset();
   questionsContainer.innerHTML = "";
-  addQuestionBlock();
-  addQuestionBlock();
+  addQuestionBlock(questionsContainer);
+  addQuestionBlock(questionsContainer);
 }
 
 async function handleSaveQuiz(e) {
@@ -131,13 +167,7 @@ async function handleSaveQuiz(e) {
   const title = document.getElementById("quizTitle").value.trim();
   const author = document.getElementById("quizAuthor").value.trim();
   const description = document.getElementById("quizDescription").value.trim();
-
-  const questionBlocks = [...document.querySelectorAll(".question-block")];
-  const questions = questionBlocks.map(block => ({
-    text: block.querySelector(".q-text").value.trim(),
-    options: [...block.querySelectorAll(".q-option")].map(i => i.value.trim()),
-    correctIndex: Number(block.querySelector(".q-correct").value),
-  })).filter(q => q.text && q.options.every(Boolean));
+  const questions = collectQuestions(questionsContainer);
 
   if (!title || !author) return alert("Заполни название и автора.");
   if (!questions.length) return alert("Добавь хотя бы один вопрос.");
@@ -227,6 +257,7 @@ function renderLibrary() {
       <div class="quiz-actions">
         <button class="primary" data-copy="${quiz.roomCode}">Копировать код</button>
         <button class="secondary" data-open="${quiz.roomCode}">Открыть</button>
+        <button class="secondary" data-edit="${quiz.id}">Изменить квиз</button>
         <button class="secondary" data-results="${quiz.id}">Результаты</button>
       </div>
 
@@ -246,6 +277,10 @@ function renderLibrary() {
       openQuizByCode(quiz.roomCode);
     });
 
+    item.querySelector(`[data-edit="${quiz.id}"]`).addEventListener("click", () => {
+      openEditQuiz(quiz.id);
+    });
+
     item.querySelector(`[data-results="${quiz.id}"]`).addEventListener("click", async () => {
       const box = item.querySelector(`#results-${quiz.id}`);
       box.classList.toggle("hidden");
@@ -258,6 +293,49 @@ function renderLibrary() {
 
     list.appendChild(item);
   });
+}
+
+function openEditQuiz(quizId) {
+  const quiz = state.myQuizzes.find(q => q.id === quizId);
+  if (!quiz) return alert("Квиз не найден.");
+  state.editingQuizId = quizId;
+
+  document.getElementById("editQuizTitle").value = quiz.title || "";
+  document.getElementById("editQuizAuthor").value = quiz.author || "";
+  document.getElementById("editQuizDescription").value = quiz.description || "";
+  editQuestionsContainer.innerHTML = "";
+
+  quiz.questions.forEach(q => addQuestionBlock(editQuestionsContainer, q, false));
+  switchView("edit");
+}
+
+async function handleUpdateQuiz(e) {
+  e.preventDefault();
+  if (!state.editingQuizId) return;
+
+  const title = document.getElementById("editQuizTitle").value.trim();
+  const author = document.getElementById("editQuizAuthor").value.trim();
+  const description = document.getElementById("editQuizDescription").value.trim();
+  const questions = collectQuestions(editQuestionsContainer);
+
+  if (!title || !author) return alert("Заполни название и автора.");
+  if (!questions.length) return alert("Добавь хотя бы один вопрос.");
+
+  try {
+    await updateDoc(doc(db, "quizzes", state.editingQuizId), {
+      title,
+      author,
+      description,
+      questions,
+      updatedAt: serverTimestamp(),
+    });
+    await loadMyQuizzes();
+    switchView("library");
+    alert("Квиз обновлён. Код комнаты остался прежним.");
+  } catch (err) {
+    console.error(err);
+    alert("Не удалось обновить квиз.");
+  }
 }
 
 async function renderAttemptsHtml(quizId) {
@@ -313,8 +391,8 @@ async function openQuizByCode(code) {
     document.getElementById("playerSetup").classList.remove("hidden");
     document.getElementById("quizRunner").classList.add("hidden");
     document.getElementById("finalResult").classList.add("hidden");
-    document.getElementById("solverName").value = "";
     document.getElementById("retryActions").classList.add("hidden");
+    document.getElementById("solverName").value = "";
     switchView("play");
   } catch (err) {
     console.error(err);
@@ -327,7 +405,6 @@ function resetPlayState() {
   state.currentScore = 0;
   state.solverName = "";
   state.answers = [];
-
   document.getElementById("feedbackBox").className = "feedback hidden";
   document.getElementById("feedbackBox").innerHTML = "";
   document.getElementById("nextQuestionBtn").classList.add("hidden");
@@ -426,7 +503,7 @@ async function finishQuiz() {
   const percent = Math.round((state.currentScore / total) * 100);
   document.getElementById("progressFill").style.width = "100%";
   document.getElementById("quizRunner").classList.add("hidden");
-  document.getElementById("retryActions").classList.remove("hidden");
+
   const attempt = {
     solverName: state.solverName,
     correctAnswers: state.currentScore,
@@ -455,6 +532,18 @@ async function finishQuiz() {
       Результат сохранён в Firebase и доступен автору в разделе «Мои квизы».
     </p>
   `;
+  document.getElementById("retryActions").classList.remove("hidden");
+}
+
+function retryQuiz() {
+  if (!state.activeQuiz) return;
+  const previousName = state.solverName;
+  resetPlayState();
+  document.getElementById("playerSetup").classList.remove("hidden");
+  document.getElementById("quizRunner").classList.add("hidden");
+  document.getElementById("finalResult").classList.add("hidden");
+  document.getElementById("retryActions").classList.add("hidden");
+  document.getElementById("solverName").value = previousName || "";
 }
 
 function updateStats() {
@@ -501,27 +590,4 @@ function escapeHtml(str = "") {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-}
-function retryQuiz() {
-  if (!state.activeQuiz) return;
-
-  resetPlayState();
-  document.getElementById("playerSetup").classList.remove("hidden");
-  document.getElementById("quizRunner").classList.add("hidden");
-  document.getElementById("finalResult").classList.add("hidden");
-  document.getElementById("retryActions").classList.add("hidden");
-  document.getElementById("solverName").value = state.solverName || "";
-}
-async function updateExistingQuiz(quizId, updatedQuestions) {
-  try {
-    await updateDoc(doc(db, "quizzes", quizId), {
-      questions: updatedQuestions,
-      updatedAt: serverTimestamp(),
-    });
-
-    alert("Квиз успешно обновлён. Код комнаты остался прежним.");
-  } catch (err) {
-    console.error(err);
-    alert("Ошибка обновления квиза");
-  }
 }
