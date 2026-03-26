@@ -1,3 +1,4 @@
+
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -31,6 +32,17 @@ const state = {
   answers: [],
   editingQuizId: null,
 };
+function getRoomCodeFromTelegram() {
+  const tg = window.Telegram?.WebApp;
+
+  if (!tg) return null;
+
+  const startParam = tg.initDataUnsafe?.start_param;
+
+  if (!startParam) return null;
+
+  return startParam;
+}
 
 const views = {
   home: document.getElementById("homeView"),
@@ -74,8 +86,19 @@ async function init() {
   addQuestionBlock(questionsContainer);
   updateStats();
   await loadMyQuizzes();
-}
 
+  const roomCode = getRoomCodeFromTelegram();
+
+  if (roomCode) {
+    const input = document.getElementById("roomCodeInput");
+
+    if (input) {
+      input.value = roomCode;
+    }
+
+    await openQuizByCode(roomCode);
+  }
+}
 function switchView(name) {
   Object.values(views).forEach(v => v.classList.remove("active"));
   views[name].classList.add("active");
@@ -417,7 +440,11 @@ function resetPlayState() {
 
 function startQuiz() {
   if (!state.activeQuiz) return;
-  const name = document.getElementById("solverName").value.trim();
+  let name = document.getElementById("solverName").value.trim();
+
+if (!name && window.TelegramUserName) {
+  name = window.TelegramUserName;
+}
   if (!name) return alert("Введите имя.");
   state.solverName = name;
   document.getElementById("playerSetup").classList.add("hidden");
