@@ -1,4 +1,3 @@
-
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -32,6 +31,21 @@ const state = {
   answers: [],
   editingQuizId: null,
 };
+const tg = window.Telegram?.WebApp;
+
+if (tg) {
+  tg.ready();
+  tg.expand();
+
+  const user = tg.initDataUnsafe?.user;
+
+  if (user) {
+    const name =
+      user.first_name + (user.last_name ? " " + user.last_name : "");
+
+    window.TelegramUserName = name;
+  }
+}
 function getRoomCodeFromTelegram() {
   const tg = window.Telegram?.WebApp;
 
@@ -41,7 +55,7 @@ function getRoomCodeFromTelegram() {
 
   if (!startParam) return null;
 
-  return startParam;
+  return startParam.trim().toUpperCase();
 }
 
 const views = {
